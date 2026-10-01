@@ -9,6 +9,12 @@
   --heatmap-tooltip-border: rgba(255, 255, 255, 0.12);
   --heatmap-tooltip-shadow: 0 12px 28px rgba(26, 24, 21, 0.22);
   --heatmap-label: #57606a;
+  /* Placeholders sit back from the data; the current ring stands out from it.
+   * Both follow the page's own text colour, so neither assumes a background. */
+  --heatmap-placeholder-color: color-mix(in srgb, currentColor 10%, transparent);
+  --heatmap-placeholder-fill: color-mix(in srgb, currentColor 2%, transparent);
+  --heatmap-current-color: currentColor;
+  --heatmap-current-width: 2px;
 
   display: inline-flex;
   flex-direction: column;
@@ -143,6 +149,77 @@
 .heatmap__cell-slot:hover .heatmap__cell,
 .heatmap__cell-slot:focus-visible .heatmap__cell {
   transform: scale(1.18);
+}
+
+/*
+ * Outlines. Shapes drawn with a radius take a CSS border or outline; clipped
+ * shapes (diamond, hexagon, plus) would lose it to their own clip path, so they
+ * get an SVG polygon instead and the CSS line is switched off.
+ */
+.heatmap__outline {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.heatmap__outline polygon {
+  fill: none;
+}
+
+/* A placeholder is the cell's shape, barely there: a light dashed line over a
+ * tint faint enough that it never passes for an empty cell. */
+.heatmap__placeholder {
+  position: relative;
+  overflow: hidden;
+  border: 1px dashed var(--heatmap-placeholder-color);
+  background: var(--heatmap-placeholder-fill);
+}
+
+.heatmap__placeholder-outline polygon {
+  stroke: var(--heatmap-placeholder-color);
+  /* Half of this is clipped away, leaving a 1px line inside the shape. */
+  stroke-width: 2;
+  stroke-dasharray: 3 2;
+}
+
+/* The ring sits inside the cell's edge, so it never collides with a neighbour
+ * or with the focus ring drawn outside the slot. */
+.heatmap__cell-slot[data-current] .heatmap__cell {
+  outline: var(--heatmap-current-width) solid var(--heatmap-current-color);
+  outline-offset: calc(-1 * var(--heatmap-current-width));
+}
+
+.heatmap__current-ring polygon {
+  stroke: var(--heatmap-current-color);
+  stroke-width: calc(2 * var(--heatmap-current-width));
+}
+
+.heatmap:is([data-shape="diamond"], [data-shape="hexagon"], [data-shape="plus"]) .heatmap__placeholder {
+  border: 0;
+}
+
+.heatmap:is([data-shape="diamond"], [data-shape="hexagon"], [data-shape="plus"])
+  .heatmap__cell-slot[data-current] .heatmap__cell {
+  outline: 0;
+}
+
+/*
+ * Depth is a darker lip along the bottom edge, as on a raised pad. It is an
+ * inset shadow, so it adds nothing to the cell's size or the grid's layout. A
+ * ring's inside is its hole, where a lip would read as a smudge, so rings
+ * stay flat.
+ */
+.heatmap[data-depth] .heatmap__cell {
+  box-shadow: var(
+    --heatmap-cell-depth,
+    inset 0 calc(-1 * var(--heatmap-depth-size, 2px)) 0 rgb(0 0 0 / 0.24)
+  );
+}
+
+.heatmap[data-depth][data-shape="ring"] .heatmap__cell {
+  box-shadow: none;
 }
 
 /* Column labels sit above the cells, each centred on the column it names. */

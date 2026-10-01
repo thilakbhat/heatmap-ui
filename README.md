@@ -67,8 +67,8 @@ Colour is a prop, not a theme file. Pass any ramp and the bands follow it. Pass
 independently. Pass `patterns` and each colour level gets its own SVG bitmap,
 written as binary or hexadecimal rows.
 
-The stylesheet only handles structure and four CSS variables, so you are not
-fighting a design system to make the chart look like yours.
+The stylesheet only handles structure and a handful of CSS variables, so you are
+not fighting a design system to make the chart look like yours.
 
 ### Data that stays honest
 
@@ -117,6 +117,9 @@ values={[{ row: 0, column: 0, value: 3, known: true, meta: anything }]}
 | `cellColor` | none | `(cell) => string \| undefined`. Paints a cell directly for categorical data; `undefined` falls back to the ramp. |
 | `unknownOpacity` | `0.5` | Applied to slots with no data. |
 | `isSlotHidden` | none | `(row, column) => boolean` for ragged grids. |
+| `isSlotPlaceholder` | none | `(row, column) => boolean`. Draws the slot as a faint, dashed version of the cell shape: it exists but has nothing in it yet. Not counted, not focusable. |
+| `isCellCurrent` | none | `(cell) => boolean`. Rings the cell inside its edge and sets `aria-current`. |
+| `depth` | `false` | Gives every cell a darker lip along its bottom edge, so it reads as a raised pad. |
 | `rowLabels`, `columnLabels` | none | Positioned against the grid. |
 | `tooltip` | none | `(cell) => ReactNode`; opens on hover and focus. |
 | `cellContent` | none | Optional visual React node centred inside each cell; values are hidden unless provided. |
@@ -307,6 +310,29 @@ labels and tooltips, so it stays an SVG renderer without an HTML overlay.
 />
 ```
 
+### Today and the days ahead
+
+`highlightToday` rings today's cell and marks it `aria-current="date"`.
+`showFuture` draws the days after today as faint dashed placeholders instead of leaving
+them out, so the final week is whole. Set `to` later to show weeks still to
+come:
+
+```tsx
+<CalendarHeatmap values={days} highlightToday showFuture />
+<CalendarHeatmap values={days} to="2026-12-31" highlightToday showFuture />
+```
+
+A future day you supply a value for, such as a booking or a goal, is drawn as
+data rather than as an outline. `today` defaults to the current date, and `to`
+defaults to `today`. Pass it to pin a server render or a test to one day.
+
+Placeholders and the ring take the cell's shape, whichever of the eight it is.
+Their colours come from the page's text colour, so they work on any background
+without a theme. Override `--heatmap-placeholder-color`,
+`--heatmap-placeholder-fill`, `--heatmap-current-color`, or
+`--heatmap-current-width` to change them. Neither
+applies to `CalendarHeatmap3D`.
+
 ### Fitting the container
 
 `weeks` takes a number, `"auto"`, or a `{ min, max }` range:
@@ -378,7 +404,8 @@ picked. Otherwise pass every day, and the calendar reads only the ones in range.
 
 The calendar adapter handles date mapping, month labels, weekday labels, and a
 default accessible name for each day. It hides days after `to` instead of
-drawing them as missing, so a final partial column stays partial. Every
+drawing them as missing, so a final partial column stays partial unless
+`showFuture` fills it with placeholders. Every
 `Heatmap` prop passes through.
 
 ## Recipes
@@ -503,11 +530,13 @@ the previous label.
   ancestor's `overflow` never clips them.
 - `encode` lets you carry intensity without relying on colour alone.
 - Hover and focus scaling is dropped under `prefers-reduced-motion`.
+- Placeholders are `aria-hidden` and never take focus. They hold nothing to
+  announce, and they do not count towards the "no data" total in the chart's name.
 
 ## Styling
 
 The stylesheet handles structure. Props provide the colour, and the stylesheet
-defines four variables you can override:
+defines these variables you can override:
 
 ```css
 .heatmap {
@@ -515,6 +544,23 @@ defines four variables you can override:
   --heatmap-tooltip-text: …;
   --heatmap-label: …;
   --heatmap-cell-content-color: …;
+  --heatmap-placeholder-color: …; /* dashed outline of a placeholder slot */
+  --heatmap-placeholder-fill: …;  /* the faint tint inside it */
+  --heatmap-current-color: …;     /* ring around a current cell */
+  --heatmap-current-width: …;
+  --heatmap-cell-depth: …;        /* the box-shadow `depth` adds */
+}
+```
+
+`depth` sets `--heatmap-depth-size` to about 7% of the cell's shorter side and
+draws `inset 0 calc(-1 * var(--heatmap-depth-size)) 0 rgb(0 0 0 / 0.24)`.
+Replace the whole shadow through `--heatmap-cell-depth`. For example, add a
+highlight along the top edge:
+
+```css
+.my-chart {
+  --heatmap-cell-depth: inset 0 calc(-1 * var(--heatmap-depth-size)) 0 rgb(0 0 0 / 0.24),
+    inset 0 1px 0 rgb(255 255 255 / 0.12);
 }
 ```
 

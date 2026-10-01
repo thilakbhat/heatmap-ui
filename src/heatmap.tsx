@@ -12,7 +12,14 @@ import {
 
 import { luminance, parseHex } from "./colors.js";
 import { buildCells } from "./grid.js";
-import { fillStyle, isRoundShape, rowOffset, rowSpacing, shapeStyle } from "./shapes.js";
+import {
+  fillStyle,
+  isRoundShape,
+  outlinePoints,
+  rowOffset,
+  rowSpacing,
+  shapeStyle,
+} from "./shapes.js";
 import type { HeatmapProps, ResolvedCell } from "./types.js";
 
 /** GitHub's light ramp, as a neutral default rather than a statement. */
@@ -38,6 +45,8 @@ export type HeatmapViewProps = HeatmapProps & {
   scrollAnchor?: "start" | "end";
   /** Stretches the chart to its container and reports how many columns fit. */
   onFitColumns?: (columns: number) => void;
+  /** What a current cell is the current one of. A calendar's is a date. */
+  currentToken?: "true" | "date";
 };
 
 export function Heatmap(props: HeatmapProps) {
@@ -71,18 +80,22 @@ export function HeatmapView({
   cellLabel,
   onCellClick,
   isSlotHidden,
+  isSlotPlaceholder,
+  isCellCurrent,
+  depth = false,
   showLegend = false,
   legendLabels,
   overflow = "scroll",
   scrollAnchor = "start",
   onFitColumns,
+  currentToken = "true",
   ariaLabel,
   className,
   style,
   ...rest
 }: HeatmapViewProps) {
   const levels = levelsProp ?? colors.length ?? 4;
-  const { cells, total, unknownCount } = useMemo(
+  const { cells, placeholders, total, unknownCount } = useMemo(
     () =>
       buildCells({
         rows,
@@ -92,8 +105,9 @@ export function HeatmapView({
         levels,
         thresholds: thresholdsProp,
         isSlotHidden,
+        isSlotPlaceholder,
       }),
-    [rows, columns, values, scale, levels, thresholdsProp, isSlotHidden],
+    [rows, columns, values, scale, levels, thresholdsProp, isSlotHidden, isSlotPlaceholder],
   );
 
   const cellWidth = cellWidthProp ?? cellSize;
@@ -156,7 +170,18 @@ export function HeatmapView({
       data-total={total}
       data-overflow={overflow}
       data-fit={onFitColumns ? "true" : undefined}
-      style={style}
+      data-shape={shape}
+      data-depth={depth ? "true" : undefined}
+      // The lip scales with the cell: a pixel on a small grid, a few on a large one.
+      style={
+        depth
+          ? ({
+              "--heatmap-depth-size":
+                Math.max(1, Math.round(Math.min(cellWidth, cellHeight) * 0.07)) + "px",
+              ...style,
+            } as CSSProperties)
+          : style
+      }
       {...rest}
     >
       <div className="heatmap__body">
@@ -200,6 +225,17 @@ export function HeatmapView({
             ) : null}
 
             <div className="heatmap__grid" style={{ width, height }}>
+              {placeholders.map(({ row, column }) => (
+                <PlaceholderView
+                  key={row + ":" + column}
+                  left={column * columnWidth + rowOffset(shape, row, columnWidth)}
+                  top={row * rowHeight}
+                  width={cellWidth}
+                  height={cellHeight}
+                  shape={shape}
+                  radius={radius}
+                />
+              ))}
               {cells.map((cell) => (
                 <HeatmapCellView
                   key={cell.row + ":" + cell.column}
@@ -221,6 +257,7 @@ export function HeatmapView({
                   cellContent={cellContent}
                   cellLabel={cellLabel}
                   onCellClick={onCellClick}
+                  current={isCellCurrent?.(cell) ? currentToken : undefined}
                   nearLeftEdge={cell.column === 0}
                   nearRightEdge={cell.column === columns - 1}
                 />
@@ -291,6 +328,7 @@ function HeatmapCellView({
   cellContent,
   cellLabel,
   onCellClick,
+  current,
   nearLeftEdge,
   nearRightEdge,
 }: {
@@ -312,6 +350,7 @@ function HeatmapCellView({
   cellContent: HeatmapProps["cellContent"];
   cellLabel: HeatmapProps["cellLabel"];
   onCellClick: HeatmapProps["onCellClick"];
+  current: "true" | "date" | undefined;
   nearLeftEdge: boolean;
   nearRightEdge: boolean;
 }) {
@@ -436,6 +475,8 @@ function HeatmapCellView({
       style={{ left, top, width, height }}
       data-known={cell.known ? "true" : "false"}
       data-level={cell.level}
+      data-current={current ? "true" : undefined}
+      aria-current={current}
       tabIndex={interactive ? 0 : undefined}
       // A generic div may not carry aria-label, so a labelled cell is an image
       // of its value, as in Heatmap3D. Unlabelled cells stay generic.
@@ -467,6 +508,9 @@ function HeatmapCellView({
             {visualContent}
           </span>
         ) : null}
+        {current && typeof box.width === "number" && typeof box.height === "number" ? (
+          <ShapeOutline className="heatmap__current-ring" shape={shape} width={box.width} height={box.height} />
+        ) : null}
       </div>
       {open && content ? (
         <div
@@ -482,6 +526,82 @@ function HeatmapCellView({
           {content}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Clipped shapes cannot carry a border, so their outline is a polygon on top.
+ * The cell clips it too, which leaves the inner half of the stroke: an inset
+ * ring that follows the shape. Shapes CSS can outline render nothing here.
+ */
+function ShapeOutline({
+  className,
+  shape,
+  width,
+  height,
+}: {
+  className: string;
+  shape: HeatmapProps["shape"] & string;
+  width: number;
+  height: number;
+}) {
+  const points = outlinePoints(shape, width, height);
+  if (!points) return null;
+  return (
+    <svg
+      className={"heatmap__outline " + className}
+      width={width}
+      height={height}
+      viewBox={"0 0 " + width + " " + height}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <polygon points={points} />
+    </svg>
+  );
+}
+
+/**
+ * A slot that exists but holds nothing yet. It keeps the cell's shape and
+ * size, drawn as a faint tint with a dashed edge, and stays out of the tab
+ * order and the accessibility tree: there is nothing in it to announce.
+ */
+function PlaceholderView({
+  left,
+  top,
+  width,
+  height,
+  shape,
+  radius,
+}: {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  shape: HeatmapProps["shape"] & string;
+  radius: HeatmapProps["radius"];
+}) {
+  const minSide = Math.min(width, height);
+  const boxWidth = isRoundShape(shape) ? minSide : width;
+  const boxHeight = isRoundShape(shape) ? minSide : height;
+  return (
+    <div
+      className="heatmap__cell-slot"
+      style={{ left, top, width, height }}
+      data-placeholder="true"
+      aria-hidden="true"
+    >
+      <div
+        className="heatmap__placeholder"
+        style={{
+          ...shapeStyle(shape, radius, width === height ? undefined : minSide),
+          width: boxWidth,
+          height: boxHeight,
+        }}
+      >
+        <ShapeOutline className="heatmap__placeholder-outline" shape={shape} width={boxWidth} height={boxHeight} />
+      </div>
     </div>
   );
 }

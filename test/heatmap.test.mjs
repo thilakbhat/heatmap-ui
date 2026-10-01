@@ -74,3 +74,79 @@ test("a labelled cell has a role that permits its aria-label", () => {
   const plain = render(Heatmap, { rows: 1, columns: 2, values });
   assert.doesNotMatch(plain, /heatmap__cell-slot"[^>]*role=/);
 });
+
+const placeholders = (html) => (html.match(/data-placeholder="true"/g) || []).length;
+
+test("a placeholder slot is drawn but holds no data", () => {
+  const html = render(Heatmap, {
+    rows: 1, columns: 4, values: [[1, 2, 100, null]],
+    // The 100 would otherwise take the top band to itself.
+    isSlotPlaceholder: (_row, column) => column >= 2,
+  });
+  assert.equal(placeholders(html), 2);
+  assert.equal(cells(html).length, 2);
+  // Neither the placeholder's value nor its missing one is counted.
+  assert.match(html, /data-total="3"/);
+  assert.doesNotMatch(html, /slots with no data/);
+  assert.match(html, /data-level="4"/);
+  // Nothing to announce and nothing to focus.
+  assert.match(html, /data-placeholder="true" aria-hidden="true"/);
+  const placeholderSlot = html.slice(html.indexOf("data-placeholder"));
+  assert.doesNotMatch(placeholderSlot.slice(0, placeholderSlot.indexOf("</div></div>")), /tabindex/);
+});
+
+test("a hidden slot wins over a placeholder", () => {
+  const html = render(Heatmap, {
+    rows: 1, columns: 2, values: [[1, 1]],
+    isSlotHidden: (_row, column) => column === 1,
+    isSlotPlaceholder: () => true,
+  });
+  assert.equal(placeholders(html), 1);
+  assert.equal((html.match(/heatmap__cell-slot/g) || []).length, 1);
+});
+
+test("a placeholder keeps the cell's shape and size", () => {
+  const rounded = render(Heatmap, {
+    rows: 1, columns: 1, cellSize: 20, isSlotPlaceholder: () => true,
+  });
+  assert.match(rounded, /class="heatmap__placeholder" style="border-radius:22%;width:20px;height:20px"/);
+  assert.doesNotMatch(rounded, /<svg/);
+
+  // A clipped shape cannot hold a border, so it is outlined with its own polygon.
+  const diamond = render(Heatmap, {
+    rows: 1, columns: 1, cellSize: 20, shape: "diamond", isSlotPlaceholder: () => true,
+  });
+  assert.match(diamond, /clip-path:polygon\(50% 0%, 100% 50%, 50% 100%, 0% 50%\)/);
+  assert.match(diamond, /heatmap__placeholder-outline[^>]*viewBox="0 0 20 20"/);
+  assert.match(diamond, /<polygon points="10,0 20,10 10,20 0,10"/);
+});
+
+test("a current cell is ringed and marked current", () => {
+  const html = render(Heatmap, {
+    rows: 1, columns: 3, values: [[1, 2, 3]],
+    isCellCurrent: (cell) => cell.column === 1,
+  });
+  assert.equal((html.match(/data-current="true"/g) || []).length, 1);
+  assert.match(html, /data-level="\d" data-current="true" aria-current="true"/);
+
+  const hexagon = render(Heatmap, {
+    rows: 1, columns: 1, shape: "hexagon", cellSize: 20, values: [[1]],
+    isCellCurrent: () => true,
+  });
+  assert.match(hexagon, /heatmap__current-ring/);
+});
+
+test("depth is opt-in and scales with the cell", () => {
+  const flat = render(Heatmap, { rows: 1, columns: 1, values: [[1]] });
+  assert.doesNotMatch(flat, /data-depth/);
+
+  const small = render(Heatmap, { rows: 1, columns: 1, depth: true, values: [[1]] });
+  assert.match(small, /data-depth="true" style="--heatmap-depth-size:1px"/);
+  const large = render(Heatmap, { rows: 1, columns: 1, depth: true, cellSize: 56, values: [[1]] });
+  assert.match(large, /--heatmap-depth-size:4px/);
+  // A caller's own style still wins.
+  const custom = render(Heatmap, {
+    rows: 1, columns: 1, depth: true, style: { "--heatmap-depth-size": "6px" }, values: [[1]],
+  });
+  assert.match(custom, /--heatmap-depth-size:6px/);
+});

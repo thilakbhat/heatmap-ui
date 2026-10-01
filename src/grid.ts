@@ -84,6 +84,7 @@ export function buildCells({
   levels,
   thresholds: explicitThresholds,
   isSlotHidden,
+  isSlotPlaceholder,
 }: {
   rows: number;
   columns: number;
@@ -92,13 +93,32 @@ export function buildCells({
   levels: number;
   thresholds?: readonly number[];
   isSlotHidden?: (row: number, column: number) => boolean;
-}): { cells: ResolvedCell[]; thresholds: number[]; total: number; unknownCount: number } {
+  isSlotPlaceholder?: (row: number, column: number) => boolean;
+}): {
+  cells: ResolvedCell[];
+  placeholders: Array<{ row: number; column: number }>;
+  thresholds: number[];
+  total: number;
+  unknownCount: number;
+} {
   const known = normalizeValues(values);
   const activeValues: number[] = [];
+  const placeholders: Array<{ row: number; column: number }> = [];
+  // A placeholder holds no data, so it is set aside before anything is measured.
+  const skip = (row: number, column: number) => {
+    if (isSlotHidden?.(row, column)) return true;
+    if (!isSlotPlaceholder?.(row, column)) return false;
+    placeholders.push({ row, column });
+    return true;
+  };
+  const skipped = new Set<string>();
 
   for (let row = 0; row < rows; row += 1) {
     for (let column = 0; column < columns; column += 1) {
-      if (isSlotHidden?.(row, column)) continue;
+      if (skip(row, column)) {
+        skipped.add(row + ":" + column);
+        continue;
+      }
       const cell = known.get(row + ":" + column);
       if (cell && cell.known !== false && cell.value > 0) activeValues.push(cell.value);
     }
@@ -111,7 +131,7 @@ export function buildCells({
 
   for (let row = 0; row < rows; row += 1) {
     for (let column = 0; column < columns; column += 1) {
-      if (isSlotHidden?.(row, column)) continue;
+      if (skipped.has(row + ":" + column)) continue;
       const cell = known.get(row + ":" + column);
       const isKnown = Boolean(cell) && cell!.known !== false;
       const value = isKnown ? cell!.value : 0;
@@ -129,5 +149,5 @@ export function buildCells({
     }
   }
 
-  return { cells, thresholds, total, unknownCount };
+  return { cells, placeholders, thresholds, total, unknownCount };
 }
