@@ -40,7 +40,7 @@ type CalendarOptions = {
    * rather than dropping any of it. A `from` after `to` shows `to` alone.
    */
   from?: string | Date;
-  /** Last day shown. Defaults to today. */
+  /** Last day shown. Defaults to `today`. */
   to?: string | Date;
   /** Defaults to 53. Ignored when `from` is set. */
   weeks?: CalendarWeeks;
@@ -55,10 +55,27 @@ type CalendarOptions = {
   cellLabel?: (day: CalendarCell) => string;
 };
 
+/** Options that need the flat grid's placeholders and rings. */
+type FlatCalendarOptions = {
+  /** The day the calendar treats as today. Defaults to the current date. */
+  today?: string | Date;
+  /** Rings today's cell and marks it `aria-current="date"`. */
+  highlightToday?: boolean;
+  /**
+   * Draws days after `today` as faint dashed placeholders rather than leaving
+   * them out, so the final week is whole. Set `to` later to show weeks still
+   * to come. A future day you supply a value for is drawn as data, not as a
+   * placeholder.
+   */
+  showFuture?: boolean;
+};
+
 type CalendarManagedProps =
   | "rows" | "columns" | "values" | "rowLabels" | "columnLabels" | "tooltip" | "cellLabel";
 
-export type CalendarHeatmapProps = Omit<HeatmapProps, CalendarManagedProps> & CalendarOptions;
+export type CalendarHeatmapProps = Omit<HeatmapProps, CalendarManagedProps> &
+  CalendarOptions &
+  FlatCalendarOptions;
 
 /** A calendar whose values rise into 3D columns, bricks or buildings. */
 export type CalendarHeatmap3DProps = Omit<Heatmap3DProps, CalendarManagedProps> & CalendarOptions;
@@ -119,11 +136,18 @@ export function resolveWeeks(weeks: CalendarWeeks | undefined): {
  * Lays days onto the grid: one column per week, one row per weekday. This is
  * the only place in the package that knows what a date is.
  */
-function useCalendarProps<Props extends CalendarOptions & Pick<HeatmapProps, "cellSize" | "gap"> & { cellWidth?: number }>(
+function useCalendarProps<
+  Props extends CalendarOptions &
+    FlatCalendarOptions &
+    Pick<HeatmapProps, "cellSize" | "gap"> & { cellWidth?: number },
+>(
   {
     values = [],
     from,
     to,
+    today,
+    highlightToday = false,
+    showFuture = false,
     // Resolved by the caller, which knows whether the chart can fit its container.
     weeks: _weeks,
     weekStart = 0,
@@ -140,12 +164,14 @@ function useCalendarProps<Props extends CalendarOptions & Pick<HeatmapProps, "ce
   // Keyed by day, so a fresh Date each render (or "today") does not re-lay the grid.
   // An unreadable `to` means today and an unreadable `from` means none,
   // rather than a render that throws.
-  const endKey = dayKey(to) ?? dayKey(new Date())!;
+  const todayKey = dayKey(today) ?? dayKey(new Date())!;
+  const endKey = dayKey(to) ?? todayKey;
   const startKey = dayKey(from);
 
-  const { cells, columns, columnLabels, dates, hidden } = useMemo(() => {
+  const { cells, columns, columnLabels, dates, hidden, placeholders } = useMemo(() => {
     const byDate = new Map(values.map((day) => [day.date, day]));
     const end = parseIsoDate(endKey);
+    const now = parseIsoDate(todayKey);
     const start = startKey === null ? null : new Date(Math.min(parseIsoDate(startKey).getTime(), end.getTime()));
 
     // The grid ends on the week containing `end`, so the last column is
@@ -164,6 +190,7 @@ function useCalendarProps<Props extends CalendarOptions & Pick<HeatmapProps, "ce
     const resolved: HeatmapCell[] = [];
     const dateByKey = new Map<string, string>();
     const hiddenSlots = new Set<string>();
+    const placeholderSlots = new Set<string>();
     const labels: Array<{ column: number; text: string }> = [];
     let previousMonth = -1;
 
@@ -187,15 +214,22 @@ function useCalendarProps<Props extends CalendarOptions & Pick<HeatmapProps, "ce
 
       for (let row = 0; row < 7; row += 1) {
         const date = new Date(columnStart + row * DAY_MS);
+        const time = date.getTime();
+        const key = isoKey(date);
+        const day = byDate.get(key);
+        // A day yet to come is a placeholder, unless the range covers it and
+        // it already has a value: a booking or a goal is data like any other.
+        if (showFuture && time > now.getTime() && (time > end.getTime() || !day)) {
+          placeholderSlots.add(row + ":" + column);
+          continue;
+        }
         // Days outside the range are not "no data", they are not in it at all.
-        if (date.getTime() > end.getTime() || (start && date.getTime() < start.getTime())) {
+        if (time > end.getTime() || (start && time < start.getTime())) {
           hiddenSlots.add(row + ":" + column);
           continue;
         }
 
-        const key = isoKey(date);
         dateByKey.set(row + ":" + column, key);
-        const day = byDate.get(key);
         if (!day) continue;
 
         resolved.push({
@@ -214,8 +248,9 @@ function useCalendarProps<Props extends CalendarOptions & Pick<HeatmapProps, "ce
       columnLabels: labels,
       dates: dateByKey,
       hidden: hiddenSlots,
+      placeholders: placeholderSlots,
     };
-  }, [values, endKey, startKey, weeks, weekStart]);
+  }, [values, endKey, startKey, todayKey, showFuture, weeks, weekStart]);
 
   // A three-letter month is about 24px at the label's 10px font. When a month
   // starts too few columns after the previous label there is no room for both,
@@ -258,6 +293,13 @@ function useCalendarProps<Props extends CalendarOptions & Pick<HeatmapProps, "ce
     columns,
     values: cells,
     isSlotHidden: (row: number, column: number) => hidden.has(row + ":" + column),
+    isSlotPlaceholder: showFuture
+      ? (row: number, column: number) => placeholders.has(row + ":" + column)
+      : undefined,
+    isCellCurrent: highlightToday
+      ? (cell: ResolvedCell) => dates.get(cell.row + ":" + cell.column) === todayKey
+      : undefined,
+    currentToken: "date" as const,
     rowLabels,
     columnLabels: showMonthLabels ? monthLabels : undefined,
     tooltip: tooltip ? (cell: ResolvedCell) => tooltip(withDate(cell)) : undefined,
@@ -304,7 +346,9 @@ export function CalendarHeatmap(props: CalendarHeatmapProps) {
 
 /** Lays the same calendar onto a rotatable 3D grid, with height encoding value. */
 export function CalendarHeatmap3D(props: CalendarHeatmap3DProps) {
-  const heatmapProps = useCalendarProps(props, resolveWeeks(props.weeks).max);
+  // Placeholders and rings belong to the flat grid; a 3D scene has neither.
+  const { isSlotPlaceholder: _placeholder, isCellCurrent: _current, currentToken: _token, ...heatmapProps } =
+    useCalendarProps(props, resolveWeeks(props.weeks).max);
   return <Heatmap3D {...heatmapProps} />;
 }
 

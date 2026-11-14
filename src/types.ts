@@ -111,6 +111,21 @@ export type HeatmapProps = Omit<HTMLAttributes<HTMLDivElement>, "values"> & {
    * ends; those slots should not be drawn at all.
    */
   isSlotHidden?: (row: number, column: number) => boolean;
+  /**
+   * Draws a slot as an outline of the cell shape: a place that exists but has
+   * nothing to show yet, such as a day still to come. A placeholder is not
+   * data. It takes no part in the scale, the total or the "no data" count, and
+   * it cannot be focused or hovered. `isSlotHidden` wins where both apply.
+   */
+  isSlotPlaceholder?: (row: number, column: number) => boolean;
+  /** Rings the cells it returns true for, such as today, and marks them `aria-current`. */
+  isCellCurrent?: (cell: ResolvedCell) => boolean;
+  /**
+   * Lights every cell from above, so it reads as a raised pad: a darker lip
+   * along the bottom, a highlight on the top rim and a shadow beneath. Each
+   * layer has its own CSS variable.
+   */
+  depth?: boolean;
 
   rowLabels?: ReadonlyArray<ReactNode>;
   columnLabels?: ReadonlyArray<{ column: number; text: ReactNode }>;
@@ -168,7 +183,7 @@ export type Heatmap3DFaceColor = (args: Heatmap3DFaceColorArgs) => string;
 export type Heatmap3DProps = Omit<
   HeatmapProps,
   | "shape" | "encode" | "radius" | "minScale" | "cellContent" | "cellWidth" | "cellHeight"
-  | "cellColor" | "overflow"
+  | "cellColor" | "overflow" | "isSlotPlaceholder" | "isCellCurrent" | "depth"
 > & {
   shape?: Heatmap3DShape;
   blockStyle?: Heatmap3DBlockStyle;

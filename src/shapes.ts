@@ -7,13 +7,32 @@ import type { HeatmapShape } from "./types.js";
  * clip paths, which keeps every shape a single element that can still carry a
  * background, an outline and a transition.
  */
-const CLIP_PATHS: Partial<Record<HeatmapShape, string>> = {
-  diamond: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
-  hexagon: "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)",
-  plus:
-    "polygon(35% 0%, 65% 0%, 65% 35%, 100% 35%, 100% 65%, 65% 65%, " +
-    "65% 100%, 35% 100%, 35% 65%, 0% 65%, 0% 35%, 35% 35%)",
+const POLYGONS: Partial<Record<HeatmapShape, ReadonlyArray<readonly [number, number]>>> = {
+  diamond: [[50, 0], [100, 50], [50, 100], [0, 50]],
+  hexagon: [[25, 0], [75, 0], [100, 50], [75, 100], [25, 100], [0, 50]],
+  plus: [
+    [35, 0], [65, 0], [65, 35], [100, 35], [100, 65], [65, 65],
+    [65, 100], [35, 100], [35, 65], [0, 65], [0, 35], [35, 35],
+  ],
 };
+
+const CLIP_PATHS: Partial<Record<HeatmapShape, string>> = Object.fromEntries(
+  Object.entries(POLYGONS).map(([shape, points]) => [
+    shape,
+    "polygon(" + points.map(([x, y]) => x + "% " + y + "%").join(", ") + ")",
+  ]),
+);
+
+/**
+ * A border or an inset shadow follows the box, so on a clipped shape all but a
+ * few corners of it are cut away. Outlines for those shapes are drawn as SVG
+ * instead, from the same polygon. Returns null for shapes CSS can outline.
+ */
+export function outlinePoints(shape: HeatmapShape, width: number, height: number): string | null {
+  const points = POLYGONS[shape];
+  if (!points) return null;
+  return points.map(([x, y]) => (x / 100) * width + "," + (y / 100) * height).join(" ");
+}
 
 const RADII: Partial<Record<HeatmapShape, string>> = {
   rounded: "22%",
