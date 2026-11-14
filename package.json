@@ -30,9 +30,7 @@
     "docs/playground-2d.png",
     "docs/playground-3d.png"
   ],
-  "sideEffects": [
-    "**/*.css"
-  ],
+  "sideEffects": ["**/*.css"],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
@@ -49,36 +47,15 @@
     "@types/react-dom": "^19.0.0",
     "typescript": "^5.0.0"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/thilakbhat/heatmap-ui.git"
-  },
+  "repository": { "type": "git", "url": "git+https://github.com/thilakbhat/heatmap-ui.git" },
   "homepage": "https://thilakbhat.github.io/heatmap-ui/",
-  "bugs": {
-    "url": "https://github.com/thilakbhat/heatmap-ui/issues"
-  },
+  "bugs": { "url": "https://github.com/thilakbhat/heatmap-ui/issues" },
   "author": "thilakbhat",
   "keywords": [
-    "heatmap",
-    "react",
-    "calendar-heatmap",
-    "contribution-graph",
-    "punchcard",
-    "hexbin",
-    "data-visualization",
-    "grid",
-    "accessible",
-    "headless",
-    "3d",
-    "isometric",
-    "svg",
-    "themeable",
-    "quantile"
+    "heatmap", "react", "calendar-heatmap", "contribution-graph", "punchcard",
+    "hexbin", "data-visualization", "grid", "accessible", "headless",
+    "3d", "isometric", "svg", "themeable", "quantile"
   ],
-  "engines": {
-    "node": ">=20"
-  },
-  "publishConfig": {
-    "access": "public"
-  }
+  "engines": { "node": ">=20" },
+  "publishConfig": { "access": "public" }
 }
