@@ -177,7 +177,7 @@ export function HeatmapView({
         depth
           ? ({
               "--heatmap-depth-size":
-                Math.max(1, Math.round(Math.min(cellWidth, cellHeight) * 0.07)) + "px",
+                Math.max(1, Math.round(Math.min(cellWidth, cellHeight) * 0.09)) + "px",
               ...style,
             } as CSSProperties)
           : style
@@ -258,6 +258,7 @@ export function HeatmapView({
                   cellLabel={cellLabel}
                   onCellClick={onCellClick}
                   current={isCellCurrent?.(cell) ? currentToken : undefined}
+                  depth={depth}
                   nearLeftEdge={cell.column === 0}
                   nearRightEdge={cell.column === columns - 1}
                 />
@@ -329,6 +330,7 @@ function HeatmapCellView({
   cellLabel,
   onCellClick,
   current,
+  depth,
   nearLeftEdge,
   nearRightEdge,
 }: {
@@ -351,6 +353,7 @@ function HeatmapCellView({
   cellLabel: HeatmapProps["cellLabel"];
   onCellClick: HeatmapProps["onCellClick"];
   current: "true" | "date" | undefined;
+  depth: boolean;
   nearLeftEdge: boolean;
   nearRightEdge: boolean;
 }) {
@@ -501,7 +504,13 @@ function HeatmapCellView({
     >
       <div
         className="heatmap__cell"
-        style={{ ...fill, opacity: cell.known ? 1 : unknownOpacity }}
+        style={{
+          ...fill,
+          opacity: cell.known ? 1 : unknownOpacity,
+          // Depth shades each cell from its own colour, which CSS cannot read
+          // back out of the background.
+          ...(depth ? ({ "--heatmap-cell-color": color } as CSSProperties) : {}),
+        }}
       >
         {hasVisualContent ? (
           <span className="heatmap__cell-content" aria-hidden="true" style={contentStyle}>

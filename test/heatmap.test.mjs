@@ -143,7 +143,7 @@ test("depth is opt-in and scales with the cell", () => {
   const small = render(Heatmap, { rows: 1, columns: 1, depth: true, values: [[1]] });
   assert.match(small, /data-depth="true" style="--heatmap-depth-size:1px"/);
   const large = render(Heatmap, { rows: 1, columns: 1, depth: true, cellSize: 56, values: [[1]] });
-  assert.match(large, /--heatmap-depth-size:4px/);
+  assert.match(large, /--heatmap-depth-size:5px/);
   // A caller's own style still wins.
   const custom = render(Heatmap, {
     rows: 1, columns: 1, depth: true, style: { "--heatmap-depth-size": "6px" }, values: [[1]],

@@ -119,7 +119,7 @@ values={[{ row: 0, column: 0, value: 3, known: true, meta: anything }]}
 | `isSlotHidden` | none | `(row, column) => boolean` for ragged grids. |
 | `isSlotPlaceholder` | none | `(row, column) => boolean`. Draws the slot as a faint, dashed version of the cell shape: it exists but has nothing in it yet. Not counted, not focusable. |
 | `isCellCurrent` | none | `(cell) => boolean`. Rings the cell inside its edge and sets `aria-current`. |
-| `depth` | `false` | Gives every cell a darker lip along its bottom edge, so it reads as a raised pad. |
+| `depth` | `false` | Lights every cell from above, so it reads as a raised pad: a darker lip, a top highlight, and a shadow beneath. |
 | `rowLabels`, `columnLabels` | none | Positioned against the grid. |
 | `tooltip` | none | `(cell) => ReactNode`; opens on hover and focus. |
 | `cellContent` | none | Optional visual React node centred inside each cell; values are hidden unless provided. |
@@ -548,21 +548,28 @@ defines these variables you can override:
   --heatmap-placeholder-fill: …;  /* the faint tint inside it */
   --heatmap-current-color: …;     /* ring around a current cell */
   --heatmap-current-width: …;
-  --heatmap-cell-depth: …;        /* the box-shadow `depth` adds */
+  --heatmap-cell-depth: …;        /* the shadows `depth` adds */
+  --heatmap-cell-sheen: …;        /* the gradient over each face */
 }
 ```
 
-`depth` sets `--heatmap-depth-size` to about 7% of the cell's shorter side and
-draws `inset 0 calc(-1 * var(--heatmap-depth-size)) 0 rgb(0 0 0 / 0.24)`.
-Replace the whole shadow through `--heatmap-cell-depth`. For example, add a
-highlight along the top edge:
+`depth` lights each cell from above, like a raised pad: a darker lip along the
+bottom edge, a highlight on the top rim, a soft light inside the top, a shadow
+beneath, and a faint sheen over the face. Distances scale with
+`--heatmap-depth-size`, which is set to about 9% of the cell's shorter side.
+Tune one layer at a time:
 
 ```css
 .my-chart {
-  --heatmap-cell-depth: inset 0 calc(-1 * var(--heatmap-depth-size)) 0 rgb(0 0 0 / 0.24),
-    inset 0 1px 0 rgb(255 255 255 / 0.12);
+  --heatmap-depth-lip: rgb(0 0 0 / 0.32);
+  --heatmap-depth-highlight: rgb(255 255 255 / 0.2);
+  --heatmap-depth-glow: rgb(255 255 255 / 0.07);
+  --heatmap-depth-shadow: rgb(0 0 0 / 0.3);
 }
 ```
+
+Or replace the shadows wholesale with `--heatmap-cell-depth`, and the sheen with
+`--heatmap-cell-sheen` (`none` turns it off).
 
 Tooltip colours follow `prefers-color-scheme`. Set
 `data-heatmap-theme="light" | "dark"` to pin them. Tooltips stay inside the

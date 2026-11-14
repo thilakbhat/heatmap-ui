@@ -121,8 +121,9 @@ export type HeatmapProps = Omit<HTMLAttributes<HTMLDivElement>, "values"> & {
   /** Rings the cells it returns true for, such as today, and marks them `aria-current`. */
   isCellCurrent?: (cell: ResolvedCell) => boolean;
   /**
-   * Gives every cell a darker lip along its bottom edge, so it reads as a
-   * raised pad. Restyle it through `--heatmap-cell-depth`.
+   * Lights every cell from above, so it reads as a raised pad: a darker lip
+   * along the bottom, a highlight on the top rim and a shadow beneath. Each
+   * layer has its own CSS variable.
    */
   depth?: boolean;
 
