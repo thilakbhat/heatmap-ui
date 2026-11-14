@@ -2,7 +2,7 @@
 
 ![heatmap-ui playground preview](docs/cover.png)
 
-[![CI](https://github.com/tb962/heatmap-ui/actions/workflows/ci.yml/badge.svg)](https://github.com/tb962/heatmap-ui/actions/workflows/ci.yml)
+[![CI](https://github.com/thilakbhat/heatmap-ui/actions/workflows/ci.yml/badge.svg)](https://github.com/thilakbhat/heatmap-ui/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@thilakbhat/heatmap-ui.svg)](https://www.npmjs.com/package/@thilakbhat/heatmap-ui)
 [![license](https://img.shields.io/npm/l/@thilakbhat/heatmap-ui.svg)](LICENSE)
 
@@ -10,7 +10,7 @@ A headless heatmap toolkit for React. Eight cell shapes, an interactive 3D mode
 that runs on plain SVG, and control over every colour, size and label on the
 grid.
 
-**[Try it in the playground →](https://tb962.github.io/heatmap-ui/)**
+**[Try it in the playground →](https://thilakbhat.github.io/heatmap-ui/)**
 
 ```bash
 npm install @thilakbhat/heatmap-ui
@@ -527,7 +527,7 @@ scrolls within `.heatmap__viewport`. Row labels and the legend sit outside it.
 
 ## Playground
 
-**<https://tb962.github.io/heatmap-ui/>**. No install required.
+**<https://thilakbhat.github.io/heatmap-ui/>**. No install required.
 
 To run it from your working copy:
 

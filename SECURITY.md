@@ -15,7 +15,7 @@ not backported.
 Please report privately rather than opening a public issue. Use GitHub's
 private vulnerability reporting:
 
-**[Report a vulnerability](https://github.com/tb962/heatmap-ui/security/advisories/new)**
+**[Report a vulnerability](https://github.com/thilakbhat/heatmap-ui/security/advisories/new)**
 
 That opens a private advisory visible only to the maintainers. Include the
 version, a description, and the smallest reproduction you can manage.
