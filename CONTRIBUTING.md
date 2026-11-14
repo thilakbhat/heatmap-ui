@@ -6,7 +6,7 @@ useful contributions are usually small ones.
 ## Getting set up
 
 ```bash
-git clone git@github.com:tb962/heatmap-ui.git
+git clone git@github.com:thilakbhat/heatmap-ui.git
 cd heatmap-ui
 npm install
 npm test
@@ -35,7 +35,7 @@ npx serve .
 Open `examples/playground.html`. It imports the compiled output from `dist`,
 so rebuild after changing anything in `src`. React comes from a CDN, so the
 page needs network access. The hosted copy is at
-<https://tb962.github.io/heatmap-ui/>.
+<https://thilakbhat.github.io/heatmap-ui/>.
 
 ## What the library is trying to be
 
