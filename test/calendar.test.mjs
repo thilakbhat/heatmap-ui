@@ -185,3 +185,59 @@ test("ring cells thicken with the level and stay unfilled", () => {
   const borders = [...html.matchAll(/border:(\d+)px solid/g)].map((m) => Number(m[1]));
   assert.ok(borders[0] < borders[1], "ring thickness did not track the value");
 });
+
+test("showFuture outlines the rest of the final week instead of dropping it", () => {
+  // 2026-09-07 is a Monday, so Tue-Sat of that week are still to come.
+  const html = render(CalendarHeatmap, {
+    today: "2026-09-07", weeks: 2, showFuture: true, values: [],
+  });
+  assert.equal((html.match(/heatmap__cell-slot/g) || []).length, 14);
+  assert.equal((html.match(/data-placeholder="true"/g) || []).length, 5);
+});
+
+test("to defaults to today", () => {
+  const byToday = render(CalendarHeatmap, { today: "2026-09-07", weeks: 2, values: [] });
+  const byTo = render(CalendarHeatmap, { to: "2026-09-07", weeks: 2, values: [] });
+  assert.equal(byToday, byTo);
+});
+
+test("weeks still to come are placeholders, unless a day already has a value", () => {
+  // Two whole weeks past a Monday "today".
+  const html = render(CalendarHeatmap, {
+    today: "2026-09-07",
+    to: "2026-09-19",
+    weeks: 3,
+    showFuture: true,
+    values: [{ date: "2026-09-10", value: 4 }],
+  });
+  assert.equal((html.match(/heatmap__cell-slot/g) || []).length, 21);
+  // Tue-Sat of this week and all of the next, less the day with a value.
+  assert.equal((html.match(/data-placeholder="true"/g) || []).length, 5 + 7 - 1);
+  assert.match(html, /Thursday, September 10, 2026\. 4/);
+  // Without showFuture the same days read as missing, as they always have.
+  const plain = render(CalendarHeatmap, {
+    today: "2026-09-07", to: "2026-09-19", weeks: 3, values: [],
+  });
+  assert.doesNotMatch(plain, /data-placeholder/);
+  assert.match(plain, /Friday, September 18, 2026\. No data\./);
+});
+
+test("a range that ended in the past has no future to show", () => {
+  const html = render(CalendarHeatmap, {
+    today: "2026-09-30", to: "2026-09-07", weeks: 1, showFuture: true, values: [],
+  });
+  assert.doesNotMatch(html, /data-placeholder/);
+  assert.equal((html.match(/heatmap__cell-slot/g) || []).length, 2);
+});
+
+test("highlightToday rings today as the current date", () => {
+  const html = render(CalendarHeatmap, {
+    today: "2026-09-07",
+    weeks: 1,
+    highlightToday: true,
+    values: [{ date: "2026-09-07", value: 2 }],
+  });
+  assert.equal((html.match(/data-current="true"/g) || []).length, 1);
+  assert.match(html, /aria-current="date" [^>]*aria-label="Monday, September 7, 2026\. 2"/);
+  assert.doesNotMatch(render(CalendarHeatmap, { today: "2026-09-07", weeks: 1, values: [] }), /data-current/);
+});

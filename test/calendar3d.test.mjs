@@ -56,3 +56,10 @@ test("3D calendar labels distinguish a known zero from an unobserved day", () =>
   assert.match(html, /aria-label="Sunday, September 6, 2026\. No data\."/);
   assert.doesNotMatch(html, /Tuesday, September 8, 2026/);
 });
+
+test("the 3D calendar does not leak the flat grid's placeholder props", () => {
+  const html = renderToStaticMarkup(React.createElement(CalendarHeatmap3D, {
+    to: "2026-09-07", weeks: 2, values: [{ date: "2026-09-07", value: 1 }],
+  }));
+  assert.doesNotMatch(html, /currenttoken|currentToken|isSlotPlaceholder/i);
+});
